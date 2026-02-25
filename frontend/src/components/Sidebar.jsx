@@ -5,7 +5,6 @@ import {
   ListOrdered,
   Play,
   Database,
-  SlidersHorizontal,
   LayoutGrid,
   Settings as LucideSettings,
   Copy,
@@ -21,6 +20,7 @@ import {
   ChevronRight,
   MonitorCog,
   ServerCog,
+  Blocks,
 } from 'lucide-react';
 import {
   Avatar,
@@ -32,10 +32,8 @@ import {
   UnstyledButton,
   TextInput,
   ActionIcon,
-  Menu,
   ScrollArea,
 } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
 import logo from '../images/logo.png';
 import useChannelsStore from '../store/channels';
 import './sidebar.css';
@@ -186,8 +184,8 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth }) => {
           { label: 'Stats', icon: <ChartLine size={20} />, path: '/stats' },
           { label: 'Plugins', icon: <PlugZap size={20} />, path: '/plugins' },
           {
-            label: 'Connect',
-            icon: <Webhook size={20} />,
+            label: 'Integrations',
+            icon: <Blocks size={20} />,
             paths: [
               {
                 label: 'Connections',
@@ -203,7 +201,7 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth }) => {
           },
           {
             label: 'System',
-            icon: <MonitorCog size={20} />,
+            icon: <LucideSettings size={20} />,
             paths: [
               {
                 label: 'Users',
@@ -217,7 +215,7 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth }) => {
               },
               {
                 label: 'Settings',
-                icon: <LucideSettings size={20} />,
+                icon: <MonitorCog size={20} />,
                 path: '/settings',
               },
               {
@@ -251,11 +249,6 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth }) => {
       successTitle: 'Success',
       successMessage: 'Public IP copied to clipboard',
     });
-  };
-
-  const onLogout = async () => {
-    await logout();
-    window.location.reload();
   };
 
   return (

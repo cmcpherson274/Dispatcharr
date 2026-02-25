@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **CVE-2026-1285** (moderate): Potential denial-of-service in `django.utils.text.Truncator` HTML methods via inputs with large numbers of unmatched HTML end tags.
   - **CVE-2026-1287** (high): Potential SQL injection in column aliases via control characters in `FilteredRelation`.
   - **CVE-2026-1312** (high): Potential SQL injection via `QuerySet.order_by()` and `FilteredRelation` when using column aliases containing periods.
+- Updated frontend npm dependencies to resolve 5 audit vulnerabilities (1 moderate, 4 high):
+  - Updated `ajv` 6.12.6 → 6.14.0, resolving a **moderate** ReDoS vulnerability when using the `$data` option ([GHSA-2g4f-4pwh-qvx6](https://github.com/advisories/GHSA-2g4f-4pwh-qvx6))
+  - Enforced `minimatch` ≥10.2.2 via npm overrides, resolving **high** ReDoS via repeated wildcards with non-matching literal patterns ([GHSA-3ppc-4f35-3m26](https://github.com/advisories/GHSA-3ppc-4f35-3m26)) affecting `minimatch`, `@eslint/config-array`, `@eslint/eslintrc`, and `eslint`
 
 ### Added
 
@@ -26,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Library selection and scheduling controls: Added support for selecting included media libraries per integration and configuring auto-sync interval (hours/days/weeks; `0` disables schedule).
 - TV series depth import for media servers: Added provider and sync pipeline support to ingest series with seasons/episodes (not just movies), and map them into VOD relations/categories with provider metadata and direct stream source URLs.
 - Media server managed account priority: Integration-created VOD accounts now enforce high provider priority (`1000`) so media-server relations are preferred when duplicate content exists across providers.
-
+- API key authentication: Added support for API key-based authentication as an alternative to JWT tokens. Users can generate and revoke their own personal API key from their profile page, enabling programmatic access for scripts, automations, and third-party integrations without exposing account credentials. Keys authenticate via the `Authorization: ApiKey <key>` header or the `X-API-Key: <key>` header. Admin users can additionally generate and revoke keys on behalf of any user.
 - Lightweight channel summary API endpoint: Added a new `/api/channels/summary/` endpoint that returns only the minimal channel data needed for TV Guide and DVR scheduling (id, name, logo), avoiding the overhead of serializing full channel objects for high-frequency UI operations.
 - Custom Dummy EPG subtitle template support: Added optional subtitle template field to custom dummy EPG configuration. Users can now define subtitle patterns using extracted regex groups and time/date placeholders (e.g., `{starttime} - {endtime}`). (Closes #942)
 - Event-driven webhooks and script execution (Connect): Added new Connect feature that enables event-driven execution of custom scripts and webhooks in response to system events. Supports multiple event types including channel lifecycle (start, stop, reconnect, error, failover), stream operations (switch), recording events (start, end), data refreshes (EPG, M3U), and client activity (connect, disconnect). Event data is available as environment variables in scripts (prefixed with `DISPATCHARR_`), POST payloads for webhooks, and plugin execution payloads. Plugins can now subscribe to events by specifying an `events` array in their action definitions. Includes connection testing endpoint with dummy payloads for validation. (Closes #203)
@@ -37,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Next Available**: Auto-assign starting from 1, skipping all used channel numbers
     Each mode includes its own configuration options accessible via the "Channel Numbering Mode" dropdown in auto sync settings. (Closes #956, #433)
 - Legacy NumPy for modular Docker: Added entrypoint detection and automatic installation for the Celery container (use `USE_LEGACY_NUMPY`) to support older CPUs. - Thanks [@patrickjmcd](https://github.com/patrickjmcd)
+- `series_relation` foreign key on `M3UEpisodeRelation`: episode relations now carry a direct FK to their parent `M3USeriesRelation`. This enables correct CASCADE deletion (removing a series relation automatically removes its episode relations), precise per-provider scoping during stale-stream cleanup.
 
 ### Changed
 
@@ -46,6 +50,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `psutil` 7.1.3 → 7.2.2
   - `torch` 2.9.1+cpu → 2.10.0+cpu
   - `sentence-transformers` 5.2.0 → 5.2.3
+  - `ajv` 6.12.6 → 6.14.0 (security patch; see Security section)
+  - `minimatch` enforced ≥10.2.2 via npm overrides (security patch; see Security section)
+  - `react` / `react-dom` 19.2.3 → 19.2.4
+  - `react-router-dom` / `react-router` 7.12.0 → 7.13.0
+  - `react-hook-form` 7.70.0 → 7.71.2
+  - `react-draggable` 4.4.6 → 4.5.0
+  - `@tanstack/react-table` 8.21.2 → 8.21.3
+  - `video.js` 8.23.4 → 8.23.7
+  - `vite` 7.3.0 → 7.3.1
+  - `zustand` 5.0.9 → 5.0.11
+  - `allotment` 1.20.4 → 1.20.5
+  - `prettier` 3.7.4 → 3.8.1
+  - `@swc/wasm` 1.15.7 → 1.15.11
+  - `@testing-library/react` 16.3.1 → 16.3.2
+  - `@types/react` 19.2.7 → 19.2.14
+  - `@vitejs/plugin-react-swc` 4.2.2 → 4.2.3
 - Channel store optimization: Refactored frontend channel loading to only fetch channel IDs on initial login (matching the streams store pattern), instead of loading full channel objects upfront. Full channel data is fetched lazily as needed. This dramatically reduces login time and initial page load when large channel libraries are present.
 - DVR scheduling: Channel selector now displays the channel number alongside the channel name when scheduling a recording.
 - TV Guide performance improvements: Optimized the TV Guide with horizontal culling for off-screen program rows (only rendering visible programs), throttled now-line position updates, and improved scroll performance. Reduces unnecessary DOM work and improves responsiveness with large EPG datasets.
@@ -64,6 +84,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - XC EPG URL construction for accounts with sub-paths or trailing slashes: Fixed EPG URL construction in M3U forms to normalize server URL to origin before appending `xmltv.php` endpoint, preventing double slashes and incorrect path placement when server URLs include sub-paths or trailing slashes. (Fixes #800) - Thanks [@CodeBormen](https://github.com/CodeBormen)
 - Auto channel sync duplicate channel numbers across groups: Fixed issue where multiple auto-sync groups starting at the same number would create duplicate channel numbers. The used channel number tracking now persists across all groups in a single sync operation, ensuring each assigned channel number is globally unique.
 - Modular mode PostgreSQL/Redis connection checks: Replaced raw Python socket checks with native tools (`pg_isready` for PostgreSQL and `socket.create_connection` for Redis) in modular deployment mode to prevent indefinite hangs in Docker environments with non-standard networking or DNS configurations. Now properly supports IPv4 and IPv6 configurations. (Fixes #952) - Thanks [@CodeBormen](https://github.com/CodeBormen)
+- VOD episode UUID regeneration on every refresh: a pre-emptive `Episode.objects.delete()` in `refresh_series_episodes` ran before `batch_process_episodes`, defeating its update-in-place logic and forcing all episodes to be recreated with new UUIDs on every refresh. Clients (Jellyfin, Emby, Plex, etc.) with cached episode paths received 500 errors until a full library rescan. Removing the delete allows episodes to be updated in place with stable UUIDs. (Fixes #785, #985, #820) - Thanks [@znake-oil](https://github.com/znake-oil)
+- VOD stale episode stream cleanup scoped incorrectly per provider: when a provider removed a stream from a series, `batch_process_episodes` could delete episode relations belonging to a different provider version of the same series (e.g. EN vs ES) that had deduped to the same `Series` object via TMDB/IMDB ID. Cleanup is now scoped to the specific `M3USeriesRelation` that was queried.
 
 ## [0.19.0] - 2026-02-10
 
@@ -138,6 +160,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Plugin loader now supports `plugin.py` without `__init__.py`, including folders with non-identifier names, by loading modules directly from file paths.
 - Plugin action handling stabilized: avoids registry race conditions and only shows loading on the active action.
 - Plugin enable/disable toggles now update immediately without requiring a full page refresh.
+- M3U/EPG tasks downloading endlessly for large files: Fixed the root cause where the Redis task lock (300s TTL) expired during long downloads, allowing Celery Beat to start competing duplicate tasks that never completed. Added a `TaskLockRenewer` daemon thread that periodically extends the lock TTL while a task is actively working, applied to all long-running task paths (M3U refresh, M3U group refresh, EPG refresh, EPG program parsing). Also adds an HTTP timeout to M3U download requests, streams M3U downloads directly to a temp file on disk instead of accumulating the entire file in memory, and adds Celery task time limits as a safety net against runaway tasks. (Fixes #861) - Thanks [@CodeBormen](https://github.com/CodeBormen)
 
 ## [0.18.1] - 2026-01-27
 
